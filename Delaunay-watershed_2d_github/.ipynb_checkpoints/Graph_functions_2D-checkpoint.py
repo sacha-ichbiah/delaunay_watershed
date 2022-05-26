@@ -1,0 +1,136 @@
+from time import time 
+import numpy as np 
+import networkx
+
+from Triangles_functions import give_edges_table, find_key_multiplier
+
+
+class Delaunay_Graph(): 
+
+    def __init__(self, tri,edt,labels,nx,ny,npoints=10):
+        self.Nodes = tri.simplices
+        self.Vertices = tri.points
+        self.tri = tri
+        self.n_simplices = len(tri.simplices)
+        self.edt = edt
+        self.labels = labels
+        self.nx = nx
+        self.ny = ny
+
+        edges_table = self.construct_edges_table()
+        self.construct_edges(edges_table)
+        self.compute_scores(edt,npoints)
+
+
+    def construct_edges_table(self): 
+        Tris = np.sort(self.tri.simplices,axis=1)
+        self.Tris = Tris.copy()
+        Tris+=1 #We shift the indices to avoid 0 index. 
+        edges_table = np.array(give_edges_table(Tris))
+        key_multiplier = find_key_multiplier(max(len(self.tri.points),len(self.tri.simplices)))
+        Keys = edges_table[:,0]*(key_multiplier**2)+edges_table[:,1]*(key_multiplier**1)+edges_table[:,2]
+        edges_table=(edges_table[np.argsort(Keys)])
+
+        return(edges_table)
+
+    def construct_edges(self,edges_table): 
+        index = 0 
+        n = len(edges_table)
+
+        self.Edges = []
+        self.Nodes_linked_by_Edges=[]
+        self.Lone_edges=[]
+        self.Nodes_linked_by_lone_edges=[]
+        while index < n-1 : 
+
+            if edges_table[index][0]==edges_table[index+1][0] and edges_table[index][1]==edges_table[index+1][1] : 
+                a,b = edges_table[index][2],edges_table[index+1][2]
+                self.Edges.append(edges_table[index][:-1]-1) #We shift back the indices
+                self.Nodes_linked_by_Edges.append([a,b])
+                index+=2
+            else : 
+                self.Lone_edges.append(edges_table[index][:-1]-1)
+                self.Nodes_linked_by_lone_edges.append(edges_table[index][2])
+                index+=1
+
+        self.Edges = np.array(self.Edges)
+        self.Nodes_linked_by_Edges = np.array(self.Nodes_linked_by_Edges) 
+        self.Lone_edges = np.array(self.Lone_edges)
+        self.Nodes_linked_by_lone_edges = np.array(self.Nodes_linked_by_lone_edges)
+    def construct_nodes_edges_list(self): 
+        Nodes =np.zeros((len(self.Tris),3),dtype=int)
+        Indexes = np.zeros(len(self.Tris),dtype=int)
+
+        for i,pair in enumerate(self.Nodes_linked_by_Edges) : 
+            a,b= pair
+            Nodes[a,Indexes[a]]=i+1
+            Nodes[b,Indexes[b]]=i+1
+            Indexes[a]+=1
+            Indexes[b]+=1
+
+        return(Nodes)
+
+    def compute_scores(self,edt,npoints): 
+        sampling_parts = np.linspace(0,1,npoints)
+        sampling_scores = np.ones(len(sampling_parts))/len(sampling_parts)
+        Verts = self.Vertices.copy()[:,[0,1]]
+
+        Scores=np.zeros(len(self.Edges))
+
+        for idx,edge in enumerate(self.Edges) : 
+            for i,value in enumerate(sampling_parts) : 
+                point = Verts[edge[0]]*value + Verts[edge[1]]*(1-value)
+                Scores[idx] +=sampling_scores[i]*edt(point[1],point[0])[0]
+    
+        self.Scores = np.array(Scores)
+
+
+    def compute_areas(self): 
+        Pos = self.Vertices[self.Tris]
+        Vects = Pos[:,[0,0]]-Pos[:,[1,2]]
+        Areas = np.abs(np.linalg.det(Vects))/2
+        return(Areas)
+
+    def compute_lengths(self):
+        #Pos[i] = 2*2 array of 2 points of the plane
+        Pos = self.Vertices[self.Edges]
+        Sides = Pos[:,0]-Pos[:,1]
+        Lengths_sides = np.linalg.norm(Sides,axis = 1)
+        return(Lengths_sides)
+
+
+    def compute_nodes_centroids(self): 
+        return(np.mean(self.Vertices[self.Nodes],axis=1))
+    
+    #def compute_nodes_centroids_values(self):     
+    #    return(self.edt(Centroids[0],Centroids[1]))
+    
+    def compute_zero_nodes(self):
+        Centroids = self.compute_nodes_centroids()
+        def func_labels(x): 
+            return(self.labels(x[1],x[0]))
+
+        bools = np.array(list(map(func_labels,Centroids)))[:,0]==0
+        ints = np.arange(len(Centroids))[bools]
+        return(ints)
+
+    def networkx_graph_weights_and_borders(self): 
+
+        Areas = self.compute_areas()  #Number of nodes (Triangles)
+        Lengths = self.compute_lengths()  #Number of edges (Sides)
+
+        G = networkx.Graph()
+        nt = len(Areas)
+        Dicts = [{'area':x} for x in Areas]
+        G.add_nodes_from(zip(np.arange(nt),Dicts))
+    
+        Indices=np.arange(len(self.Edges))
+        
+        network_edges = np.array([(self.Nodes_linked_by_Edges[idx][0],self.Nodes_linked_by_Edges[idx][1],{'score': self.Scores[idx],'length':Lengths[idx]}) for idx in Indices])
+        
+        G.add_edges_from(network_edges)
+        List_Maps=[dict(zip(np.arange(len(Areas)),np.array([np.arange(len(Areas))]).transpose().tolist()))]
+
+        print("Number of Nodes :",len(G.nodes)," Number of Edges :",len(G.edges))
+
+        return [G], List_Maps
