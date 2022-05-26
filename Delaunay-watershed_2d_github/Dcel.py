@@ -6,7 +6,7 @@ import pickle
 from subprocess import list2cmdline
 import numpy as np 
 import matplotlib.pyplot as plt
-
+import struct
 @dataclass
 class Vertex:
     """Vertex in 2D"""
@@ -199,54 +199,13 @@ def Clean_mesh(Seg):
             Edges[i]=Edges[i,[1,0,3,2]]
             Nodes_linked[i]=Nodes_linked[i][[1,0]]
 
-    Edges = reorient_faces(Edges,Seg,Nodes_linked)
+    Edges = reorient_edges(Edges,Seg,Nodes_linked)
     for i in range(len(Edges)): 
         Edges[i]=Edges[i,[1,0,2,3]]
 
     return(Verts,Edges)
 
-def compute_normal_Edges(Verts,Edges):
-    Pos = Verts[Edges[:,[0,1]]]
-    Sides_1 = Pos[:,1]-Pos[:,0]
-    Sides_1_z = np.zeros((len(Sides_1),3))
-    Sides_1_z[:,:2]=Sides_1
-    
-    Z = np.zeros(Sides_1_z.shape)
-    Z[:,2]=1
-    
-    Normal_edges = np.cross(Z,Sides_1_z,axis=1)[:,:2]
-    Norms = np.linalg.norm(Normal_edges,axis=1)#*(1+1e-8)
-    Normal_edges/=(np.array([Norms]*2).transpose())
-    return(Normal_edges)
 
-
-def reorient_faces(Faces,Seg,Nodes_linked):
-       
-    #Thumb rule for all the faces
-    
-    Normals = compute_normal_Edges(Seg.Delaunay_Graph.Vertices,Faces)
-    
-    P = Seg.Delaunay_Graph.Vertices[Faces[:,:2]]
-    Centroids_faces = np.mean(P,axis=1)
-    Centroids_nodes = np.mean(Seg.Delaunay_Graph.Vertices[Seg.Delaunay_Graph.Tris[Nodes_linked[:,0]]],axis=1)
-    Vectors = Centroids_nodes-Centroids_faces
-    Norms = np.linalg.norm(Vectors,axis=1)
-    Vectors[:,0]/=Norms
-    Vectors[:,1]/=Norms
-
-    #print(Vectors)
-    #print(Normals)
-    Dot_product = np.sum(np.multiply(Vectors,Normals),axis=1)
-    Normals_sign = np.sign(Dot_product)
-    
-    #Reorientation according to the normal sign
-    reoriented_faces = Faces.copy()
-    for i,s in enumerate(Normals_sign) : 
-        #print(s)
-        if s <0 : 
-            reoriented_faces[i]=reoriented_faces[i][[1,0,2,3]]
-            
-    return(reoriented_faces)
 
 
 
@@ -1102,86 +1061,135 @@ def trace_line(x0, y0, x1, y1):
     return(np.array(points,dtype=np.int))  
 
 
-"""
-def compute_curvatures_vertices_interfaces(Faces_list): 
-    Points_interface={}
 
 
 
-    for f in Faces_list : 
-        if not f.closed() : 
-            continue
-
-        he,success = f.find_triple_point_edge()
-        if not success : 
-            he = f.outer_component
-
-        b=he
-        points = []
-        face_key = he.incident_face.attached['key']
-        current_interface = (face_key,he.twin.incident_face.attached['key'])
-        while True : 
-            previous_incident_face = b.twin.incident_face.attached['key']
-            points.append([b.origin.x,b.origin.y])
-            b=b.next
-            next_incident_face = b.twin.incident_face.attached['key']
-
-            if (previous_incident_face != next_incident_face)  : 
-                points.append([b.origin.x,b.origin.y])
-                #b=b.next
-                #points.append([b.origin.x,b.origin.y])
-                List = Points_interface.get(current_interface,[])
-                List.append(np.array(points.copy()))
-                Points_interface[current_interface] = List.copy()
-                current_interface=(face_key,next_incident_face)
-                points=[]
-
-            if (b.attached['key']==he.attached['key']) : 
-                if not success : 
-                    points.append([he.origin.x,he.origin.y])
-                    List = Points_interface.get(current_interface,[])
-                    List.append(np.array(points.copy()))
-                    Points_interface[current_interface] = List.copy()
-                break
 
 
-    Curvatures_points = {}
-    Curvatures_edges = {}
-    Curvatures_lines = {}
-    for key in sorted(Points_interface.keys()) :         
-        #if key[0]>key[1]: 
-        #    continue
-        Curvatures_points[key]=[]
-        Curvatures_edges[key]=[]
-        Curvatures_lines[key]=[]
-        for m in range(len(Points_interface[key])):
-            p = Points_interface[key][m]
-            Curvatures_points[key].append(np.zeros(len(p)))
-            Curvatures_edges[key].append(np.zeros(len(p)-1))
-            Curvatures_lines[key].append([])
-            if len(p)>2 : 
 
-                total_l = []
 
-                for i in range(1,len(p)-1):
-                    l1 = np.linalg.norm(p[i-1]-p[i])
-                    l2 = np.linalg.norm(p[i]-p[i+1])
-                    l = l1 + l2
-                    total_l.append(l)
-                    c = Menger_Curvature(p[i-1],p[i],p[i+1])
-                    Curvatures_points[key][m][i] = c
-                
-                Curvatures_points[key][m][0] = Curvatures_points[key][m][1]
-                Curvatures_points[key][m][-1] = Curvatures_points[key][m][-2]
 
-                for i in range(len(p)-1):
-                    Curvatures_edges[key][m][i] = ( Curvatures_points[key][m][i] + Curvatures_points[key][m][i+1] ) / 2
-                for i in range(len(p)-1):
-                    Curvatures_lines[key][m].append(trace_line(p[i][0], p[i][1], p[i+1][0], p[i+1][1]))
-            else : 
-                #print(m,len(Curvatures_edges[key]),len(Curvatures_lines[key]))
-                Curvatures_edges[key][m]=[0]
-                Curvatures_lines[key][m]=[trace_line(p[0][0], p[0][1], p[1][0], p[1][1])]
-    return(Curvatures_points,Curvatures_edges,Curvatures_lines)
 
-"""
+def write_mesh_bin(filename, Verts, Edges,):
+    assert(len(Edges[0])==4 and len(Verts[0])==2)
+    strfile = struct.pack("Q", len(Verts))
+    strfile +=Verts.flatten().astype(np.float64).tobytes()
+    strfile += struct.pack("Q", len(Edges))
+    dt=np.dtype([('triangles',np.uint64,(2,)), ('labels',np.int32,(2,))])
+    F_n = Edges[:,:2].astype(np.uint64)
+    F_t = Edges[:,2:].astype(np.int32)
+    func = lambda i : (F_n[i],F_t[i])
+    T=np.array(list(map(func,np.arange(len(Edges)))),dtype=dt)
+    strfile+=T.tobytes()
+    file = open(filename,'wb')
+    file.write(strfile)
+    file.close()
+
+
+def write_mesh_text(filename, Verts, Edges):
+    
+    file = open(filename, 'w')
+    file.write(str(len(Verts))+'\n')
+    for i in range(len(Verts)): 
+        file.write(f'{Verts[i][0]:.5f} {Verts[i][1]:.5f}'+'\n')
+    file.write(str(len(Edges))+'\n')
+    for i in range(len(Edges)): 
+        file.write(f'{Edges[i][0]} {Edges[i][1]} {Edges[i][2]} {Edges[i][3]}'+'\n')
+    file.close() 
+
+def open_mesh_multitracker(type_file,filename="../../../../../Dropbox/S.Ichbiah/Data/Doublet images/cells2_alpha0.25_beta1.0_delta1.0-1.6/mesh000000.rec"): 
+    if type_file == 'bin' : 
+        return(read_rec_file_bin(filename))
+    else : 
+        return(read_rec_file_num(filename))
+
+def read_rec_file_bin(filename): 
+    mesh_file=open(filename,'rb')
+    
+    #Vertices
+    num_vertices,=struct.unpack('Q', mesh_file.read(8)) 
+    Verts=np.fromfile(mesh_file,count=2*num_vertices,dtype=np.float64).reshape((num_vertices,2))
+
+    #Triangles
+    num_triangles,=struct.unpack('Q', mesh_file.read(8))
+
+    # dtype # 3 unsigned integers (long long) for the triangles # 2 integers for the labels
+    dt=np.dtype([('edges',np.uint64,(2,)), ('labels',np.int32,(2,))])
+    t=np.fromfile(mesh_file,count=num_triangles,dtype=dt)
+    mesh_file.close()
+
+    Edges_num=t['edges']
+    Edges_labels=t['labels'] 
+    Edges = np.hstack((Edges_num,Edges_labels))
+    return(Verts, Edges.astype(int),np.array([num_vertices,num_triangles]))
+
+def read_rec_file_num(filename,offset=0): 
+    mesh_file = open(filename, 'rb')
+    Ns= []
+    Verts = []
+    Edges= []
+
+    Lines=[]
+    for line in mesh_file.readlines():
+        L=line.decode('UTF8')
+        L=L[:-1].split(' ')
+        Lines.append(L)
+        if len(L)==1 : 
+            Ns.append(L[0])
+        elif len(L)==2 : 
+            Verts.append(L)
+        else : 
+            Edges.append(L)
+    mesh_file.close()
+    Edges = np.array(Edges).astype(int)
+    Edges[:,[2,3]]+=offset
+    Verts = np.array(Verts).astype(float)
+    Ns = np.array(Ns).astype(int)
+    return(Verts, Edges, Ns)
+
+
+
+
+
+def compute_normal_Edges(Verts,Edges):
+    Pos = Verts[Edges[:,[0,1]]]
+    Sides_1 = Pos[:,1]-Pos[:,0]
+    Sides_1_z = np.zeros((len(Sides_1),3))
+    Sides_1_z[:,:2]=Sides_1
+    
+    Z = np.zeros(Sides_1_z.shape)
+    Z[:,2]=1
+    
+    Normal_edges = np.cross(Z,Sides_1_z,axis=1)[:,:2]
+    Norms = np.linalg.norm(Normal_edges,axis=1)#*(1+1e-8)
+    Normal_edges/=(np.array([Norms]*2).transpose())
+    return(Normal_edges)
+
+
+def reorient_edges(Edges,Seg,Nodes_linked):
+       
+    #Thumb rule for all the Edges
+    
+    Normals = compute_normal_Edges(Seg.Delaunay_Graph.Vertices,Edges)
+    
+    P = Seg.Delaunay_Graph.Vertices[Edges[:,:2]]
+    Centroids_Edges = np.mean(P,axis=1)
+    Centroids_nodes = np.mean(Seg.Delaunay_Graph.Vertices[Seg.Delaunay_Graph.Tris[Nodes_linked[:,0]]],axis=1)
+    Vectors = Centroids_nodes-Centroids_Edges
+    Norms = np.linalg.norm(Vectors,axis=1)
+    Vectors[:,0]/=Norms
+    Vectors[:,1]/=Norms
+
+    #print(Vectors)
+    #print(Normals)
+    Dot_product = np.sum(np.multiply(Vectors,Normals),axis=1)
+    Normals_sign = np.sign(Dot_product)
+    
+    #Reorientation according to the normal sign
+    reoriented_Edges = Edges.copy()
+    for i,s in enumerate(Normals_sign) : 
+        #print(s)
+        if s <0 : 
+            reoriented_Edges[i]=reoriented_Edges[i][[1,0,2,3]]
+            
+    return(reoriented_Edges)

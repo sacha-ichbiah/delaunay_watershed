@@ -6,8 +6,7 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from skimage.segmentation import expand_labels
 from Geometric_utilities_2D import build_triangulation
-from Dcel import DCEL_Data, Clean_mesh
-#from Dcel import DCEL_Data,Clean_mesh_from_seg
+from Dcel import DCEL_Data, Clean_mesh, write_mesh_text, write_mesh_bin
 
 
 class geometry_reconstruction_2d():
@@ -19,7 +18,7 @@ class geometry_reconstruction_2d():
         self.original_image = original_image
 
 
-        x = np.linspace(0,self.EDT.shape[0]-1,self.EDT.shape[0])  #To determine : start from 1 and end at EDT.shape[] or from  and end at EDT.shape[-1] ?
+        x = np.linspace(0,self.EDT.shape[0]-1,self.EDT.shape[0])
         y = np.linspace(0,self.EDT.shape[1]-1,self.EDT.shape[1])
         edt = interpolate.interp2d(x, y, self.EDT.transpose(), kind='linear')
         label = interpolate.interp2d(x, y, self.labels.transpose(), kind='linear')
@@ -42,8 +41,17 @@ class geometry_reconstruction_2d():
         return(Clean_mesh(self))
     
     def return_dcel(self): 
-        v,e = self.return_mesh()
-        return(DCEL_Data(v,e))
+        verts,edges = self.return_mesh()
+        return(DCEL_Data(verts,edges))
+    
+    def export_mesh(self,filename,mode='bin'):
+        verts,edges = self.return_mesh()
+        if mode=='txt':
+            write_mesh_text(filename, verts, edges)
+        elif mode=='bin': 
+            write_mesh_bin(filename, verts, edges)
+        else : 
+            print("Please choose a valid format")
 
     def simple_plot(self): 
         fig, axs = plt.subplots(1,3,figsize = (24,8))

@@ -154,10 +154,6 @@ def build_triangulation_torch(labels,min_distance=5,prints=False):#,size_shell=2
     
     all_points = np.vstack((corners,local_maxes,local_mins))
     
-    #points = (EDT-maxpooled)==0 + (EDT+minpooled)==0
-    #import napari
-    #v = napari.view_image(points)
-    
     if prints : print("Starting triangulation..")
     
     tesselation=Delaunay(all_points)

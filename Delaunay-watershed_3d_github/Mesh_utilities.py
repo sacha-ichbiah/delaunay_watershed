@@ -36,7 +36,7 @@ def separate_faces_dict(Faces,n_towers=10):
         
     return(Faces_separated)
 
-def write_mesh_bin(filename, Faces, Verts):
+def write_mesh_bin(filename, Verts, Faces):
     assert(len(Faces[0])==5 and len(Verts[0])==3)
     strfile = struct.pack("Q", len(Verts))
     strfile +=Verts.flatten().astype(np.float64).tobytes()

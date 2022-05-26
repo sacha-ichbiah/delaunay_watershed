@@ -29,10 +29,8 @@ class geometry_reconstruction_3d():
         t1 = time()
         seeds_nodes = compute_seeds_idx_from_voxel_coords(self.EDT,self.Delaunay_Graph.compute_nodes_centroids(),self.seeds_coords)
         zero_nodes = self.Delaunay_Graph.compute_zero_nodes()
-        self.Map_end = seeded_watershed_map(self.Nx_Graph,seeds_nodes,self.seeds_indices,zero_nodes)#Seeded_Watershed(self.Nx_Graph,seeds_nodes,self.seeds_indices,zero_nodes)
+        self.Map_end = seeded_watershed_map(self.Nx_Graph,seeds_nodes,self.seeds_indices,zero_nodes)
         
-        ##if print_info : 
-        #   print("Number of Nodes :",len(self.Nx_Graph.nodes),"Number of Edges :",len(self.Nx_Graph.edges))
         t2 = time()
         if print_info : print("Watershed done in ",np.round(t2-t1,3))
 
@@ -50,9 +48,9 @@ class geometry_reconstruction_3d():
 
     def export_mesh(self,filename,mode='bin'):
         Verts,Faces = self.return_mesh()
-        if mode=='bin':
+        if mode=='txt':
             write_mesh_text(filename, Verts, Faces)
-        elif mode=='txt': 
+        elif mode=='bin': 
             write_mesh_bin(filename, Verts, Faces)
         else : 
             print("Please choose a valid format")

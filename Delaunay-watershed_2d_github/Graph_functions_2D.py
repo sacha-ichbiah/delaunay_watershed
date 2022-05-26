@@ -120,8 +120,6 @@ class Delaunay_Graph():
     def compute_nodes_centroids(self): 
         return(np.mean(self.Vertices[self.Nodes],axis=1))
     
-    #def compute_nodes_centroids_values(self):     
-    #    return(self.edt(Centroids[0],Centroids[1]))
     
     def compute_zero_nodes(self):
         Centroids = self.compute_nodes_centroids()
