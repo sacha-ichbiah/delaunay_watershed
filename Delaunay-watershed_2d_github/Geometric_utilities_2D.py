@@ -73,7 +73,7 @@ def build_triangulation(labels,min_distance=4):
         seed = np.argmax(Total_EDT*((labels==i).astype(float)))
         seeds_coords.append([seed//labels.shape[1],seed%labels.shape[1]])
 
-        seeds_coords = np.array(seeds_coords)
+    seeds_coords = np.array(seeds_coords)
     seeds_indices = values_lbls
 
     points = peak_local_max(-Total_EDT,min_distance=min_distance,exclude_border=False)
