@@ -311,16 +311,16 @@ def plot_cells_polyscope(Verts,Faces,clean_before = True, clean_after = True):
         ps.remove_all_structures()
     
 
-def compute_barycentres_from_clusters(Clusters,Graph): 
-    Barycentres = np.array([np.mean(Graph.Vertices[np.unique(np.array(cluster,dtype=int).flatten())],axis=0) for cluster in Clusters])
-    New_Barycentres = Barycentres.copy()
-    #New_Barycentres[:,0]=Barycentres[:,1]
-    #New_Barycentres[:,1]=1-Barycentres[:,0]
-    return(New_Barycentres)
-
-
-
-
     
+def renormalize_verts(Verts,Faces): 
+    #When the Vertices are only a subset of the faces, we remove the useless vertices and give the new faces
+    idx_Verts_used = np.unique(Faces)
+    Verts_used = Verts[idx_Verts_used]
+    idx_mapping = np.arange(len(Verts_used))
+    mapping = dict(zip(idx_Verts_used,idx_mapping))
+    def func(x): 
+        return([mapping[x[0]],mapping[x[1]],mapping[x[2]]])
+    New_Faces = np.array(list(map(func,Faces)))
+    return(Verts_used,New_Faces)
 
 

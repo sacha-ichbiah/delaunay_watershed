@@ -1,7 +1,7 @@
 from Networkx_functions import seeded_watershed_map
 from Graph_functions_3D import Delaunay_Graph
 from Geometric_utilities_3D import build_triangulation, interpolate_image
-from Mesh_utilities import write_mesh_text,write_mesh_bin, Clean_mesh_from_seg, plot_cells_polyscope,compute_seeds_idx_from_voxel_coords,retrieve_border_tetra_with_index_map
+from Mesh_utilities import write_mesh_text,write_mesh_bin, Clean_mesh_from_seg, plot_cells_polyscope,compute_seeds_idx_from_voxel_coords,retrieve_border_tetra_with_index_map, separate_faces_dict, renormalize_verts
 from skimage.segmentation import expand_labels
 from time import time
 import numpy as np 
@@ -55,7 +55,7 @@ class geometry_reconstruction_3d():
         else : 
             print("Please choose a valid format")
 
-    def plot_in_napari(self):
+    def plot_in_napari(self, add_mesh = True):
         import napari
         v = napari.view_image(self.labels,name='Labels')
         v.add_image(self.EDT,name='Distance Transform')
@@ -63,7 +63,33 @@ class geometry_reconstruction_3d():
             v.add_image(self.original_image,name="Original Image")
         v.add_points(self.seeds_coords, name='Watershed seeds',n_dimensional=True,face_color = np.random.rand(len(self.seeds_coords),3),size = 10)
         v.add_points(self.tri.points, name='triangulation_points', n_dimensional=False, face_color = 'red', size = 1)
+        
+        if add_mesh : 
+            Verts,Faces = self.return_mesh()
+            Clusters = separate_faces_dict(Faces)
+            maxkey = np.amax(Faces[:,3:])
+            All_verts=[]
+            All_faces=[]
+            All_labels=[]
+            offset = 0 
+
+            for key in sorted(list(Clusters.keys())) : 
+                if key ==0 : continue
+                faces = np.array(Clusters[key])
+
+                vn,fn = renormalize_verts(Verts,faces)
+                ln = np.ones(len(vn))*key/maxkey
+
+                All_verts.append(vn.copy())
+                All_faces.append(fn.copy()+offset)
+                All_labels.append(ln.copy())
+                offset+=len(vn)
+
+            All_verts = np.vstack(All_verts)
+            All_faces = np.vstack(All_faces)
+            All_labels = np.hstack(All_labels)
+            v.add_surface((All_verts,All_faces,All_labels),colormap = 'viridis')
+
         return(v)
 
       
-
