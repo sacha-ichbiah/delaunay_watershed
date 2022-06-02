@@ -5,6 +5,8 @@ from Mesh_utilities import write_mesh_text,write_mesh_bin, Clean_mesh_from_seg, 
 from skimage.segmentation import expand_labels
 from time import time
 import numpy as np 
+import matplotlib.pyplot as plt
+from Mask_reconstruction import reconstruct_mask_from_dict
 
 class geometry_reconstruction_3d():
     def __init__(self,labels,min_dist = 4, expansion_labels = 0,original_image = None,print_info = False,mode='torch'):
@@ -54,6 +56,16 @@ class geometry_reconstruction_3d():
             write_mesh_bin(filename, Verts, Faces)
         else : 
             print("Please choose a valid format")
+            
+    def export_segmentation(self,filename):
+        Verts,Faces = self.return_mesh()
+        seeds = self.seeds_coords
+        image_shape = np.array(self.labels.shape)
+        Mesh_dict = {"Verts":Verts,
+                     "Faces":Faces,
+                     "seeds":seeds,
+                     "image_shape":image_shape}
+        np.save(filename, Mesh_dict)
 
     def plot_in_napari(self, add_mesh = True):
         import napari
@@ -61,7 +73,7 @@ class geometry_reconstruction_3d():
         v.add_image(self.EDT,name='Distance Transform')
         if self.original_image is not None :
             v.add_image(self.original_image,name="Original Image")
-        v.add_points(self.seeds_coords, name='Watershed seeds',n_dimensional=True,face_color = np.random.rand(len(self.seeds_coords),3),size = 10)
+        if not add_mesh : v.add_points(self.seeds_coords, name='Watershed seeds',n_dimensional=True,face_color = np.random.rand(len(self.seeds_coords),3),size = 10)
         v.add_points(self.tri.points, name='triangulation_points', n_dimensional=False, face_color = 'red', size = 1)
         
         if add_mesh : 
@@ -84,11 +96,16 @@ class geometry_reconstruction_3d():
                 All_faces.append(fn.copy()+offset)
                 All_labels.append(ln.copy())
                 offset+=len(vn)
-
+            All_verts.append(np.array([np.mean(np.vstack(All_verts),axis=0)]))
+            All_labels.append(np.array([0]))
             All_verts = np.vstack(All_verts)
             All_faces = np.vstack(All_faces)
             All_labels = np.hstack(All_labels)
+            v.add_points(self.seeds_coords, name='Watershed seeds',n_dimensional=True,face_color = np.array(plt.cm.viridis(np.array(sorted(list(Clusters.keys())))/maxkey))[:,:3],size = 10)
+            
             v.add_surface((All_verts,All_faces,All_labels),colormap = 'viridis')
+        
+            
 
         return(v)
 
