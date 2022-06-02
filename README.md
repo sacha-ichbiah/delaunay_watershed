@@ -33,7 +33,11 @@ The original raw images can be inserted optionaly for visualisation but are not 
 
 ![](Figures_readme/DW_3d_nuclei.png "Title")
 
+---
+## Mask reconstruction (Available in 2D and 3D): 
+**Compression - Decompression of epithelium segmentation** (Data from [this paper](https://www.sciencedirect.com/science/article/pii/S0167488905000935#fig6))
 
+![](Figures_readme/Mask_reconstruction.png "Title")
 
 
 
