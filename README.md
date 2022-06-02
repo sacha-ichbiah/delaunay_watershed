@@ -37,7 +37,7 @@ The original raw images can be inserted optionaly for visualisation but are not 
 ## Mask reconstruction (Available in 2D and 3D): 
 **Compression - Decompression of epithelium segmentation** (Data from [this paper](https://www.sciencedirect.com/science/article/pii/S0167488905000935#fig6))
 
-![](Figures_readme/Mask_reconstruction.png "Title")
+![](Figures_readme/Mask_reconstruction_white.png "Title")
 
 
 
